@@ -1,0 +1,171 @@
+# LLM Wiki
+
+A pattern for building personal knowledge bases using LLMs. Instead of RAG (retrieve-and-answer from raw docs), this is a **persistent, compounding wiki** — the LLM builds and maintains it incrementally as you add sources and ask questions.
+
+The wiki gets richer with every session. Cross-references are pre-built. Contradictions are already flagged. The synthesis is always current.
+
+---
+
+## How to Implement for Your Project
+
+### Step 1 — Copy the scaffold
+
+Copy this entire directory into your project or a dedicated knowledge base folder:
+
+```
+your-project-wiki/
+├── CLAUDE.md          ← the LLM's operating manual (customize this)
+├── raw/               ← your source documents go here
+│   └── assets/        ← images and attachments
+└── wiki/              ← LLM-maintained knowledge base
+    ├── index.md
+    ├── log.md
+    ├── overview.md
+    ├── entities/
+    ├── concepts/
+    ├── sources/
+    └── output/
+```
+
+### Step 2 — Customize CLAUDE.md for your domain
+
+`CLAUDE.md` is the schema. Open it and adapt:
+
+- **Directory structure**: rename subdirectories to match your domain (e.g., `wiki/people/` instead of `wiki/entities/` for a personal wiki, or `wiki/companies/` for competitive intel).
+- **Source summary template**: add domain-specific fields (e.g., `Author`, `Publication`, `Year` for research; `Speaker`, `Episode` for podcasts).
+- **Conventions**: add any naming conventions specific to your topic area.
+- **Engram project name**: change `project: "llmwiki"` throughout to match your project slug.
+
+### Step 3 — Open in Claude Code
+
+Point Claude Code at the directory containing `CLAUDE.md`:
+
+```sh
+cd your-project-wiki
+claude
+```
+
+Claude Code will read `CLAUDE.md` automatically. Every session starts with the LLM recovering context from Engram and the log.
+
+### Step 4 — Add sources and start ingesting
+
+Drop documents into `raw/`:
+
+```
+raw/
+├── my-article.md          ← clipped from web (use Obsidian Web Clipper)
+├── research-paper.pdf
+├── meeting-notes.md
+└── assets/
+    └── diagram.png
+```
+
+Then tell the LLM:
+
+```
+Ingest raw/my-article.md
+```
+
+The LLM will:
+1. Read the source
+2. Discuss key takeaways with you
+3. Write a summary page in `wiki/sources/`
+4. Update entity and concept pages
+5. Update `wiki/index.md` and `wiki/log.md`
+6. Save a memory to Engram for future sessions
+
+### Step 5 — Ask questions
+
+```
+What does the wiki say about transformer architecture?
+Compare the claims in source-a and source-b on attention mechanisms.
+What are the open questions in this domain?
+```
+
+Valuable answers get filed back into `wiki/output/` so they compound.
+
+### Step 6 — Run periodic lints
+
+```
+Lint the wiki
+```
+
+The LLM checks for contradictions, orphan pages, stale claims, and missing cross-references. Keeps the wiki healthy as it grows.
+
+---
+
+## Workflow Variants
+
+### Solo research wiki
+
+Best for: going deep on a topic over weeks or months.
+
+- Ingest papers and articles one at a time, stay involved in each ingest.
+- Ask the LLM to synthesize as you go: "What's the current thesis?"
+- Use lint passes to find gaps and generate new questions to investigate.
+
+### Book companion wiki
+
+Best for: reading a long book and building a companion reference.
+
+- Ingest one chapter at a time.
+- Create entity pages for characters, places, organizations.
+- Create concept pages for themes and plot threads.
+- By the end: a rich interlinked companion, built while you read.
+
+### Team / internal wiki
+
+Best for: keeping an internal knowledge base current from Slack threads, meeting notes, and project docs.
+
+- Feed meeting transcripts and Slack exports into `raw/`.
+- The LLM maintains entity pages (people, projects, decisions) and concept pages (terms, processes).
+- Optional: add a human review step before pages go live.
+
+### Personal / self-improvement
+
+Best for: tracking goals, health, psychology, or any ongoing personal project.
+
+- Feed journal entries, articles, and podcast notes into `raw/`.
+- Entity pages: goals, habits, people in your life.
+- Concept pages: frameworks, mental models, recurring themes.
+- Use query + output filing to build up your personal synthesis over time.
+
+---
+
+## Recommended Tooling
+
+| Tool | Purpose |
+|------|---------|
+| **Obsidian** | Browse and navigate the wiki (graph view, backlinks, search) |
+| **Obsidian Web Clipper** | Clip web articles as markdown into `raw/` |
+| **Marp** (Obsidian plugin) | Generate slide decks from wiki content |
+| **Dataview** (Obsidian plugin) | Query page frontmatter for dynamic tables |
+| **git** | Version history, branching, collaboration — the wiki is just markdown files |
+| **qmd** | Local search engine for the wiki when it outgrows the index file |
+
+---
+
+## Tips
+
+- **Ingest one source at a time** at first. Stay involved. Read what the LLM writes. Guide it on emphasis. Batch ingestion works but you lose the dialogue.
+- **File good answers back.** Every time you ask a complex question, tell the LLM to file the answer in `wiki/output/`. Your explorations should compound, not disappear into chat history.
+- **The log is searchable.** `grep "^## \[" wiki/log.md | tail -10` gives you the last 10 operations. Add it to your shell alias.
+- **The wiki is a git repo.** Commit after every ingest session. Branch for experimental re-framings. Diff to see how the synthesis has evolved.
+- **Lint regularly.** As the wiki grows, contradictions accumulate. A lint pass every 10-15 ingests keeps it clean.
+- **The schema evolves.** The conventions in `CLAUDE.md` are not fixed. You and the LLM will discover better ways to structure your specific domain. Update `CLAUDE.md` as you go and commit those changes — they're as valuable as the wiki content.
+
+---
+
+## File Reference
+
+| File | Owner | Purpose |
+|------|-------|---------|
+| `CLAUDE.md` | You + LLM | Schema and operating manual. Customize for your domain. |
+| `raw/**` | You | Immutable source documents. LLM reads, never modifies. |
+| `wiki/index.md` | LLM | Master catalog. Updated on every ingest. |
+| `wiki/log.md` | LLM | Append-only operation log. Never edited, only appended. |
+| `wiki/overview.md` | LLM | Living synthesis. Updated as the knowledge base evolves. |
+| `wiki/sources/*.md` | LLM | One summary page per ingested source. |
+| `wiki/entities/*.md` | LLM | One page per named entity (person, org, product, place). |
+| `wiki/concepts/*.md` | LLM | One page per concept, idea, or theme. |
+| `wiki/output/*.md` | LLM | Filed answers to complex queries and analyses. |
