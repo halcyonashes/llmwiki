@@ -20,7 +20,10 @@ You are the maintainer of this wiki. You read sources, synthesize knowledge, and
         ├── entities/      ← one page per named entity (person, org, product, etc.)
         ├── concepts/      ← one page per concept, idea, or theme
         ├── sources/       ← one summary page per ingested source
-        └── output/        ← analyses, comparisons, responses filed as pages
+        ├── output/        ← analyses, comparisons, responses filed as pages
+        └── context/       ← codebase context map (file index + module deep-dives)
+            ├── graph.md   ← master map: every file → purpose → key exports
+            └── <module>.md ← deep page per complex module (on demand)
 ```
 
 ---
@@ -31,7 +34,8 @@ At the start of every session, before doing anything else:
 
 1. Read `.claude/wiki/log.md` (last 20 entries) to understand recent activity.
 2. Read `.claude/wiki/index.md` to know what pages exist.
-3. Report to the user: what was done last session, what's in the wiki, what's ready to work on.
+3. If `.claude/wiki/context/graph.md` exists, read it — load the file index into context before doing any code work.
+4. Report to the user: what was done last session, what's in the wiki, what's ready to work on.
 
 ---
 
@@ -42,7 +46,7 @@ Every wiki page (except `index.md` and `log.md`) uses this frontmatter:
 ```yaml
 ---
 title: "Page Title"
-type: entity | concept | source | output
+type: entity | concept | source | output | context
 tags: [tag1, tag2]
 sources: [source-slug-1, source-slug-2]
 created: YYYY-MM-DD
@@ -55,7 +59,7 @@ updated: YYYY-MM-DD
 - Use `[[Page Title]]` for internal wiki links (Obsidian-compatible).
 - Use `> [!NOTE]` callouts for important caveats or contradictions.
 - Use `> [!WARNING]` for claims that contradict other sources.
-- End every page with a `## Sources` section listing the raw sources it draws from.
+- End every `entity`, `concept`, `source`, and `output` page with a `## Sources` section listing the raw sources it draws from. Context pages are exempt — their source is the live codebase.
 - End every entity/concept page with a `## See Also` section with related links.
 
 ---
@@ -131,10 +135,11 @@ updated: YYYY-MM-DD
 When the user asks a question:
 
 1. Read `.claude/wiki/index.md` to identify relevant pages.
-2. Read those pages and synthesize an answer.
-3. Cite wiki pages inline with `[[Page Title]]`.
-4. If the answer is valuable enough to keep (complex synthesis, comparison, analysis) → **file it** in `.claude/wiki/output/<slug>.md`.
-5. Append to `.claude/wiki/log.md`:
+2. If the question is about code, a bug, or a specific file — also read `.claude/wiki/context/graph.md` and any relevant `context/<module>.md` deep-dive pages before answering.
+3. Read the identified pages and synthesize an answer.
+4. Cite wiki pages inline with `[[Page Title]]`.
+5. If the answer is valuable enough to keep (complex synthesis, comparison, analysis) → **file it** in `.claude/wiki/output/<slug>.md`.
+6. Append to `.claude/wiki/log.md`:
    ```
    ## [YYYY-MM-DD] query | <Question (truncated)>
    Answer filed: output/<slug>.md (or "not filed")
@@ -167,7 +172,55 @@ updated: YYYY-MM-DD
 
 ---
 
-### 3. Lint the Wiki
+### 3. Map the Codebase (`/map`)
+
+When the user says "map" or "/map":
+
+1. Glob all source files in the project (excluding `.claude/`, `node_modules/`, build artifacts).
+2. For each file: read it, extract its purpose, key exports/functions/classes, and notable dependencies.
+3. Write `.claude/wiki/context/graph.md` — the master context map (see template below).
+4. For any module that is large, complex, or central to the system: create `.claude/wiki/context/<module>.md` with a deep-dive (data flow, entry points, gotchas).
+5. Update `.claude/wiki/index.md` — add or refresh the Context Map section.
+6. Append to `.claude/wiki/log.md`:
+   ```
+   ## [YYYY-MM-DD] map | Codebase context map
+   Files indexed: N
+   Deep pages created: [list or "none"]
+   ```
+
+**Context map template** (`.claude/wiki/context/graph.md`):
+```markdown
+---
+title: "Codebase Context Map"
+type: context
+tags: [codebase, index]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+
+# Codebase Context Map
+
+> Consult this before touching any file. Update entries for files you modify.
+
+## File Index
+
+| File | Purpose | Key Exports / Entry Points | Dependencies |
+|------|---------|---------------------------|--------------|
+| `src/index.ts` | App entry point | `main()` | config, server |
+| `src/server.ts` | HTTP server setup | `createServer()` | express, routes |
+| ... | ... | ... | ... |
+
+## Module Deep-Dives
+- [[context/server]] — request lifecycle, middleware order
+- [[context/auth]] — token flow, session handling
+
+## Architecture Notes
+<high-level data flow or system diagram in text>
+```
+
+---
+
+### 4. Lint the Wiki
 
 When the user says "lint" or "health check":
 
@@ -179,6 +232,8 @@ When the user says "lint" or "health check":
    - **Missing pages**: entities or concepts mentioned in `[[links]]` that have no page
    - **Gaps**: important topics not yet covered
    - **Data gaps**: questions that a web search could answer
+   - **Stale context entries**: rows in `context/graph.md` whose files no longer exist in the codebase — remove them
+   - **Unmapped files**: source files in the project not listed in `context/graph.md` — flag them for a `/map` refresh
 3. For each issue found, either fix it inline or flag it to the user.
 4. Append to `.claude/wiki/log.md`:
    ```
@@ -192,7 +247,7 @@ When the user says "lint" or "health check":
 
 ## Index Format (`.claude/wiki/index.md`)
 
-Update this file on every ingest. Keep it sorted by category:
+Update this file on every `ingest`, `/map`, and any operation that creates or removes wiki pages. Keep it sorted by category:
 
 ```markdown
 # Wiki Index
@@ -221,6 +276,12 @@ Last updated: YYYY-MM-DD | Sources ingested: N | Total pages: N
 | Page | Question / Topic | Date |
 |------|-----------------|------|
 | [[output/slug]] | One-line summary | YYYY-MM-DD |
+
+## Context Map
+| Page | Coverage | Last updated |
+|------|----------|-------------|
+| [[context/graph]] | Master file index | YYYY-MM-DD |
+| [[context/module]] | Module deep-dive | YYYY-MM-DD |
 ```
 
 ---
@@ -234,7 +295,7 @@ Append only. Never edit past entries. Format each entry as:
 <1-3 lines of detail>
 ```
 
-Operations: `ingest`, `query`, `lint`, `update`, `note`
+Operations: `ingest`, `query`, `lint`, `map`, `update`, `note`
 
 Parseable with: `grep "^## \[" .claude/wiki/log.md | tail -10`
 
@@ -252,9 +313,31 @@ Parseable with: `grep "^## \[" .claude/wiki/log.md | tail -10`
 
 ---
 
+## Context Map — Freshness Rule (MANDATORY)
+
+After **any** operation that modifies codebase files:
+
+1. Identify every file you created, edited, or deleted.
+2. Update only those entries in `.claude/wiki/context/graph.md` — do not regenerate the whole map.
+   - New file → add a row to the File Index.
+   - Modified file → update its Purpose, Key Exports, and Dependencies columns.
+   - Deleted file → remove its row and note the removal in the log.
+3. If the change affects a module that has a deep-dive page (`context/<module>.md`), update that page too.
+4. Append to `.claude/wiki/log.md`:
+   ```
+   ## [YYYY-MM-DD] update | context map
+   Files updated: [list]
+   ```
+
+**Do not skip this step.** A stale context map is worse than no map — it sends future sessions in the wrong direction.
+
+---
+
 ## What You Never Do
 
 - Modify any file in `.claude/raw/`.
 - Delete wiki pages without telling the user why.
 - Leave a `[[link]]` pointing to a non-existent page without flagging it.
 - Skip the log entry for any operation.
+- Modify codebase files without updating `context/graph.md` afterward (see Freshness Rule).
+- Run `/map` and skip updating `index.md`.
